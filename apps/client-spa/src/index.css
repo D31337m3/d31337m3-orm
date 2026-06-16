@@ -1,0 +1,101 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root { color-scheme: dark; }
+
+  * { box-sizing: border-box; }
+
+  body {
+    @apply bg-background text-zinc-100 font-sans antialiased;
+    min-height: 100dvh;
+  }
+
+  ::selection { @apply bg-cyber-cyan/30 text-white; }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { @apply bg-surface; }
+  ::-webkit-scrollbar-thumb { @apply bg-zinc-700 rounded-full; }
+  ::-webkit-scrollbar-thumb:hover { @apply bg-cyber-cyan/60; }
+}
+
+@layer components {
+  .cyber-card {
+    @apply bg-card border border-border rounded-xl p-6 relative overflow-hidden;
+  }
+
+  .cyber-card::before {
+    content: '';
+    @apply absolute inset-0 bg-cyber-grid bg-grid-40 opacity-30 pointer-events-none;
+  }
+
+  .glow-cyan {
+    box-shadow: 0 0 20px rgba(6, 182, 212, 0.3);
+  }
+
+  .glow-purple {
+    box-shadow: 0 0 20px rgba(124, 58, 237, 0.3);
+  }
+
+  .glow-green {
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center gap-2 px-5 py-2.5 rounded-lg font-semibold text-sm
+           bg-cyber-cyan text-background hover:bg-cyber-cyan/90
+           transition-all duration-200 glow-cyan hover:scale-[1.02] active:scale-[0.98];
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center gap-2 px-5 py-2.5 rounded-lg font-semibold text-sm
+           border border-cyber-cyan/40 text-cyber-cyan hover:bg-cyber-cyan/10
+           transition-all duration-200;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm text-zinc-400
+           hover:text-zinc-100 hover:bg-white/5 transition-all duration-200;
+  }
+
+  .input-cyber {
+    @apply w-full bg-surface border border-border rounded-lg px-4 py-3
+           text-zinc-100 placeholder-zinc-500 font-mono text-sm
+           focus:outline-none focus:border-cyber-cyan/60 focus:ring-1 focus:ring-cyber-cyan/30
+           transition-all duration-200;
+  }
+
+  .badge-risk-critical { @apply inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono bg-red-500/20 text-red-400 border border-red-500/30; }
+  .badge-risk-high     { @apply inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono bg-amber-500/20 text-amber-400 border border-amber-500/30; }
+  .badge-risk-low      { @apply inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono bg-green-500/20 text-green-400 border border-green-500/30; }
+
+  .terminal-line {
+    @apply font-mono text-sm py-0.5;
+  }
+}
+
+/* Scan line animation overlay */
+.scan-overlay {
+  background: linear-gradient(
+    transparent 0%,
+    rgba(6, 182, 212, 0.03) 50%,
+    transparent 100%
+  );
+  animation: scanLine 3s linear infinite;
+}
+
+@keyframes scanLine {
+  0%   { transform: translateY(-100%); }
+  100% { transform: translateY(200%); }
+}
+
+/* Risk gauge styles */
+.risk-gauge {
+  background: conic-gradient(
+    var(--risk-color) 0deg calc(var(--risk-pct) * 3.6deg),
+    #27272A calc(var(--risk-pct) * 3.6deg) 360deg
+  );
+}

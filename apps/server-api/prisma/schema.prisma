@@ -1,0 +1,337 @@
+// =============================================================================
+// D31337m3 — Prisma Schema
+// PostgreSQL relational database
+// Entities: User, Subscription, TrackedKeyword, ScannedLink, OptOutTask,
+//           LegalDocument, Payment, DepositAddress, AddOnPurchase
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── ENUMS ───────────────────────────────────────────────────────────────────
+
+enum SubscriptionTier {
+  PERSONAL_BASIC
+  PERSONAL_PREMIUM
+  BUSINESS_GROWTH
+  BUSINESS_ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  TRIALING
+  PAUSED
+}
+
+enum SubscriptionInterval {
+  MONTHLY
+  ANNUAL
+}
+
+enum PaymentProvider {
+  STRIPE
+  PAYPAL
+  INTERAC
+  CRYPTO_POLYGON
+  CRYPTO_BASE
+}
+
+enum PaymentStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+  REFUNDED
+}
+
+enum OptOutStatus {
+  QUEUED
+  IN_PROGRESS
+  AWAITING_EMAIL_VERIFICATION
+  COMPLETED
+  FAILED
+  REQUIRES_MANUAL
+}
+
+enum LinkSentiment {
+  POSITIVE
+  NEUTRAL
+  NEGATIVE
+  CRITICAL
+}
+
+enum LegalDocType {
+  CCPA_DELETION
+  GDPR_ERASURE
+  FCRA_DISPUTE
+  CUSTOM
+}
+
+enum LegalDocStatus {
+  DRAFT
+  SENT_EMAIL
+  SENT_FAX
+  ACKNOWLEDGED
+  REJECTED
+}
+
+enum AddOnType {
+  EXPEDITED_REMOVAL
+  DEEP_SCAN
+}
+
+// ─── USER ────────────────────────────────────────────────────────────────────
+
+model User {
+  id                String             @id @default(cuid())
+  email             String             @unique
+  passwordHash      String?
+  fullName          String?
+  avatarUrl         String?
+  isVerified        Boolean            @default(false)
+  verificationToken String?
+  resetToken        String?
+  resetTokenExpiry  DateTime?
+  role              String             @default("user")  // user | admin
+  stripeCustomerId  String?            @unique
+  paypalCustomerId  String?
+  web3WalletAddress String?
+  interacEmail      String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  subscriptions     Subscription[]
+  trackedKeywords   TrackedKeyword[]
+  scannedLinks      ScannedLink[]
+  optOutTasks       OptOutTask[]
+  legalDocuments    LegalDocument[]
+  payments          Payment[]
+  depositAddresses  DepositAddress[]
+  addOnPurchases    AddOnPurchase[]
+  seatMemberships   SeatMembership[]
+
+  @@index([email])
+  @@index([stripeCustomerId])
+}
+
+// ─── SUBSCRIPTION ────────────────────────────────────────────────────────────
+
+model Subscription {
+  id                    String               @id @default(cuid())
+  userId                String
+  tier                  SubscriptionTier
+  status                SubscriptionStatus   @default(TRIALING)
+  interval              SubscriptionInterval @default(MONTHLY)
+  stripeSubscriptionId  String?              @unique
+  stripeCurrentPeriodEnd DateTime?
+  paypalSubscriptionId  String?              @unique
+  currentPeriodStart    DateTime             @default(now())
+  currentPeriodEnd      DateTime?
+  canceledAt            DateTime?
+  trialEndsAt           DateTime?
+  seats                 Int                  @default(1)  // for enterprise multi-seat
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+
+  user                  User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  seatMemberships       SeatMembership[]
+
+  @@index([userId])
+  @@index([status])
+}
+
+// ─── MULTI-SEAT (Enterprise) ─────────────────────────────────────────────────
+
+model SeatMembership {
+  id             String       @id @default(cuid())
+  subscriptionId String
+  userId         String
+  invitedEmail   String?
+  role           String       @default("member")  // owner | admin | member
+  joinedAt       DateTime     @default(now())
+
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([subscriptionId, userId])
+}
+
+// ─── TRACKED KEYWORD ─────────────────────────────────────────────────────────
+
+model TrackedKeyword {
+  id           String       @id @default(cuid())
+  userId       String
+  keyword      String
+  searchEngine String       @default("google")  // google | bing | yahoo
+  locale       String       @default("en-US")
+  isActive     Boolean      @default(true)
+  lastScannedAt DateTime?
+  scanFrequency String      @default("weekly")  // daily | weekly | monthly
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scannedLinks ScannedLink[]
+
+  @@unique([userId, keyword, searchEngine])
+  @@index([userId])
+}
+
+// ─── SCANNED LINK ────────────────────────────────────────────────────────────
+
+model ScannedLink {
+  id              String         @id @default(cuid())
+  userId          String
+  keywordId       String
+  url             String
+  title           String?
+  snippet         String?
+  position        Int             // SERP rank position (1-100)
+  sentimentScore  Float           // -1.0 to +1.0
+  sentiment       LinkSentiment
+  riskScore       Float           // Visibility Risk Index (0-100)
+  domain          String
+  isDataBroker    Boolean         @default(false)
+  optOutAvailable Boolean         @default(false)
+  firstSeenAt     DateTime        @default(now())
+  lastSeenAt      DateTime        @default(now())
+  removedAt       DateTime?
+
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  keyword         TrackedKeyword  @relation(fields: [keywordId], references: [id], onDelete: Cascade)
+  optOutTask      OptOutTask?
+
+  @@index([userId])
+  @@index([keywordId])
+  @@index([sentiment])
+  @@index([domain])
+}
+
+// ─── OPT-OUT TASK ────────────────────────────────────────────────────────────
+
+model OptOutTask {
+  id                  String       @id @default(cuid())
+  userId              String
+  scannedLinkId       String?      @unique
+  brokerName          String
+  brokerUrl           String
+  brokerCategory      String?      // people-search | marketing | criminal-records | etc
+  status              OptOutStatus @default(QUEUED)
+  priority            Int          @default(5)  // 1=urgent 10=low
+  attempts            Int          @default(0)
+  lastAttemptAt       DateTime?
+  completedAt         DateTime?
+  failureReason       String?
+  verificationEmail   String?      // disposable alias used for this task
+  verificationToken   String?
+  screenshotPath      String?      // stored screenshot of completed form
+  workerJobId         String?      // BullMQ job ID
+  isExpedited         Boolean      @default(false)
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  user                User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scannedLink         ScannedLink? @relation(fields: [scannedLinkId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+  @@index([brokerName])
+}
+
+// ─── LEGAL DOCUMENT ──────────────────────────────────────────────────────────
+
+model LegalDocument {
+  id              String         @id @default(cuid())
+  userId          String
+  docType         LegalDocType
+  status          LegalDocStatus @default(DRAFT)
+  recipientName   String
+  recipientEmail  String?
+  recipientFax    String?
+  subject         String
+  pdfStoragePath  String?
+  sentAt          DateTime?
+  acknowledgedAt  DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([docType])
+  @@index([status])
+}
+
+// ─── PAYMENT ─────────────────────────────────────────────────────────────────
+
+model Payment {
+  id               String          @id @default(cuid())
+  userId           String
+  provider         PaymentProvider
+  status           PaymentStatus   @default(PENDING)
+  amountCents      Int             // amount in cents (USD)
+  currency         String          @default("USD")
+  description      String?
+  stripePaymentId  String?         @unique
+  paypalOrderId    String?         @unique
+  interacRefNumber String?
+  txHash           String?         // on-chain tx hash for crypto
+  chainId          Int?            // 137=Polygon, 8453=Base
+  tokenAddress     String?         // USDC/USDT contract address
+  confirmedAt      DateTime?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([provider])
+  @@index([status])
+  @@index([txHash])
+}
+
+// ─── CRYPTO DEPOSIT ADDRESS ──────────────────────────────────────────────────
+
+model DepositAddress {
+  id           String    @id @default(cuid())
+  userId       String
+  address      String    @unique
+  chainId      Int
+  invoiceToken String    @unique @default(cuid())
+  amountUSD    Float
+  expiresAt    DateTime
+  fulfilledAt  DateTime?
+  createdAt    DateTime  @default(now())
+
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([invoiceToken])
+}
+
+// ─── ADD-ON PURCHASE ─────────────────────────────────────────────────────────
+
+model AddOnPurchase {
+  id            String      @id @default(cuid())
+  userId        String
+  addOnType     AddOnType
+  priceCents    Int
+  paymentId     String?
+  targetKeyword String?
+  status        String      @default("pending")  // pending | processing | completed
+  resultData    Json?
+  createdAt     DateTime    @default(now())
+  completedAt   DateTime?
+
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([addOnType])
+}

@@ -1,0 +1,16 @@
+{
+  "name": "d31337m3-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": ["apps/client-spa", "apps/server-api"],
+  "scripts": {
+    "dev": "concurrently \"npm run dev -w apps/client-spa\" \"npm run dev -w apps/server-api\"",
+    "build": "npm run build -w apps/client-spa && npm run build -w apps/server-api",
+    "lint": "npm run lint -w apps/client-spa && npm run lint -w apps/server-api",
+    "typecheck": "npm run typecheck -w apps/client-spa && npm run typecheck -w apps/server-api"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "typescript": "^5.5.0"
+  }
+}
