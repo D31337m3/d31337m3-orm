@@ -536,7 +536,7 @@ export default function LandingPage() {
           </p>
           <div className="flex gap-4 text-xs text-zinc-600">
             <a href="#" className="hover:text-zinc-400">Privacy</a>
-            <a href="#" className="hover:text-zinc-400">Terms</a>
+            <Link to="/terms" className="hover:text-zinc-400">Terms</Link>
             <a href="#" className="hover:text-zinc-400">Contact</a>
           </div>
         </div>

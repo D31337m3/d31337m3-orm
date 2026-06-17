@@ -14,6 +14,7 @@ import { paymentRouter } from './controllers/payment.controller';
 import { ormRouter } from './controllers/orm.controller';
 import { authRouter } from './controllers/auth.controller';
 import { startWorkers } from './workers/scraper.worker';
+import { startEngagementWorker } from './workers/engagement.worker';
 import { logger } from './services/logger.service';
 
 const app = express();
@@ -69,6 +70,7 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
 app.listen(PORT, async () => {
   logger.info(`🚀 D31337m3 API running on port ${PORT}`);
   await startWorkers();
+  await startEngagementWorker();
   logger.info('🔧 BullMQ workers started');
 });
 

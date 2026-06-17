@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   Shield, Activity, Globe, Trash2, Search, 
-  LogOut, Settings, Bell, ExternalLink, AlertTriangle
+  LogOut, Settings, Bell, ExternalLink, AlertTriangle, Clock
 } from 'lucide-react';
 
 interface SummaryData {
@@ -133,6 +133,15 @@ export default function Dashboard() {
 
         <div className="p-8 max-w-6xl mx-auto space-y-8">
           
+          {/* Timeline Expectation Notice */}
+          <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4 flex gap-4 items-start text-sm text-amber-200/90">
+            <Clock className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold text-amber-400 mb-1">Search Engine Cache Delay</p>
+              <p>While our automated engine successfully submits removal requests and legal notices immediately, Google and Bing maintain their own web caches. <strong>It typically takes 3 to 7 days</strong> for these search engines to recrawl the data brokers and drop your information from public search results. We will monitor and report when links are fully dead.</p>
+            </div>
+          </div>
+
           {activeTab === 'overview' && (
             <>
               {/* Risk Index Banner */}
